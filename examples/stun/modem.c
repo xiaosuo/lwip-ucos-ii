@@ -6,6 +6,8 @@
 #include "ppp.h"
 
 #include "lwip/tcpip.h"
+#include "lwip/err.h"
+#include "lwip/dns.h"
 
 static OS_EVENT *__sem;
 
@@ -30,7 +32,7 @@ void modem_init(void)
 	OSSemPost(__sem);
 
 	pppInit();
-	pppSetAuth(PPPAUTHTYPE_ANY, "card", "card");
+	pppSetAuth(PPPAUTHTYPE_ANY, "cmnet", "cmnet");
 
 	sio_open(0);
 
@@ -98,6 +100,10 @@ static void link_status_cb(void *ctx, int errCode, void *arg)
 
 		if (ctx)
 			*(int *)ctx = 1;
+		if (addrs->dns1.addr)
+			dns_setserver(0, &addrs->dns1);
+		if (addrs->dns2.addr)
+			dns_setserver(1, &addrs->dns2);
 	} else {
 		OSSemPost(__sem);
 		sys_thread_free(PPP_THREAD_PRIO);
@@ -112,6 +118,11 @@ void modem_task(void *p_arg)
 	INT32U len;
 	int connected;
 
+	write_str("AT+IPR=115200\r\n");
+	OSTimeDly(OS_TICKS_PER_SEC);
+	while (sio_tryread(NULL, buf, sizeof(buf)) > 0)
+		;
+
 	while (1) {
 again:
 		OSSemPend(__sem, 0, &err);
@@ -120,8 +131,21 @@ again:
 			pppClose(pd);
 			pd = -1;
 		}
-		// TODO: AT+CGDCONT=1,"IP","CMNET"
-		write_str("ATD*99#\r\n");
+
+		write_str("AT+CGDCONT=1,\"IP\",\"CMNET\"\r\n");
+		while (1) {
+			len = read_line(buf, sizeof(buf));
+			buf[len] = '\0';
+			if (len > 2 && memcmp(buf, "OK", 2) == 0) {
+				break;
+			} else if (len > 5 && memcmp(buf, "ERROR", 5) == 0) {
+				err = OSSemPost(__sem);
+				OSTimeDly(OS_TICKS_PER_SEC * 3);
+				goto again;
+			}
+		}
+
+		write_str("ATD*99***1#\r\n");
 		while (1) {
 			len = read_line(buf, sizeof(buf));
 			buf[len] = '\0';
