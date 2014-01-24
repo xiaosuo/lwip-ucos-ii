@@ -1,0 +1,53 @@
+#ifndef __LWIPOPTS_H__
+#define __LWIPOPTS_H__
+
+#define NO_SYS			0
+
+#define TCPIP_THREAD_PRIO	12
+#define TCPIP_THREAD_STACKSIZE	128
+#define TCPIP_MBOX_SIZE		64
+
+#define PPP_SUPPORT		1
+#define PPPOS_SUPPORT		1
+#define PPP_INPROC_OWNTHREAD	1
+#define PAP_SUPPORT		1
+#define CHAP_SUPPORT		1
+#define PPP_THREAD_PRIO		11
+#define PPP_THREAD_STACKSIZE	128
+
+#define MEM_ALIGNMENT		4
+#define MEM_SIZE		(16*1024)
+#define MEMP_NUM_PBUF		10
+
+#define PBUF_POOL_SIZE		10
+#define PBUF_POOL_BUFSIZE	1500
+
+#define LWIP_IPV6	0
+
+#define LWIP_TCP	0
+
+#define LWIP_ICMP	1
+
+#define LWIP_DHCP	0
+
+#define LWIP_UDP			1
+#define UDP_TTL				255
+#define DEFAULT_UDP_RECVMBOX_SIZE	64
+#define MEMP_NUM_UDP_PCB		6
+
+#define LWIP_DNS	1
+
+#define DEFAULT_RAW_RECVMBOX_SIZE	64
+#define DEFAULT_ACCEPTMBOX_SIZE		64
+
+#define LWIP_STATS	0
+
+#define LWIP_NETCONN		1
+#define LWIP_SOCKET		1
+#define LWIP_SO_RCVTIMEO	1
+
+#define LWIP_DEBUG		1
+#define PPP_DEBUG		0x80U
+#define DNS_DEBUG		0x80U
+
+#endif /* __LWIPOPTS_H__ */
