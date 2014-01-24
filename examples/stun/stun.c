@@ -2,6 +2,8 @@
 
 #include "lwip/sockets.h"
 #include "lwip/netdb.h"
+#include "lwip/err.h"
+#include "lwip/dns.h"
 
 struct stun_header {
 	uint16_t	type;
@@ -32,6 +34,10 @@ void stun_task(void *p_arg)
 	struct stun_header *stun_hdr;
 	struct stun_attr_header *attr_hdr;
 	int timeo = 3000;
+	ip_addr_t ip;
+
+	ip.addr = inet_addr("8.8.8.8");
+	dns_setserver(0, &ip);
 
 	srand(OSTimeGet());
 	while (1) {
