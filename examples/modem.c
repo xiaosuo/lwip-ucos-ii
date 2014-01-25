@@ -135,7 +135,6 @@ again:
 		write_str("AT+CGDCONT=1,\"IP\",\"CMNET\"\r\n");
 		while (1) {
 			len = read_line(buf, sizeof(buf));
-			buf[len] = '\0';
 			if (len > 2 && memcmp(buf, "OK", 2) == 0) {
 				break;
 			} else if (len > 5 && memcmp(buf, "ERROR", 5) == 0) {
@@ -148,7 +147,6 @@ again:
 		write_str("ATD*99***1#\r\n");
 		while (1) {
 			len = read_line(buf, sizeof(buf));
-			buf[len] = '\0';
 			LWIP_ASSERT("read_line", len < sizeof(buf));
 			if (len > 7 && memcmp(buf, "CONNECT", 7) == 0) {
 				break;
