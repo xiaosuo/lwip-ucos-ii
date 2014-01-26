@@ -177,9 +177,8 @@ u32_t sio_read(sio_fd_t fd, u8_t *data, u32_t len)
 	if (len-- > 0) {
 		*data++ = sio_recv(fd);
 		++n;
+		n += sio_tryread(fd, data, len);
 	}
-
-	n += sio_tryread(fd, data, len);
 
 	return n;
 }
