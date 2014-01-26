@@ -54,7 +54,7 @@ static OS_STK __slipif_stk[SLIPIF_THREAD_STACKSIZE];
 static OS_STK __ppp_stk[PPP_THREAD_STACKSIZE];
 #endif
 
-/* sys_init() must be called before anthing else. */
+/* sys_init() must be called before anything else. */
 void sys_init(void)
 {
 	INT8U err;
@@ -69,9 +69,9 @@ static u32_t ticks_to_ms(u32_t ticks)
 	return ticks * 1000 / OS_TICKS_PER_SEC;
 }
 
-static u32_t ms_to_ticks(u32_t ticks)
+static u32_t ms_to_ticks(u32_t ms)
 {
-	return ticks * OS_TICKS_PER_SEC / 1000;
+	return ms * OS_TICKS_PER_SEC / 1000;
 }
 
 /** Create a new semaphore
