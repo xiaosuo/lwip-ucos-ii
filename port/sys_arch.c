@@ -131,7 +131,7 @@ u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
 	OSSemPend(*sem, timeout, &err);
 	switch (err) {
 	case OS_ERR_NONE:
-		return ms_to_ticks(OSTimeGet() - begin_time);
+		return ticks_to_ms(OSTimeGet() - begin_time);
 	case OS_ERR_TIMEOUT:
 		break;
 	default:
