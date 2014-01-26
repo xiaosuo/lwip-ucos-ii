@@ -9,7 +9,20 @@
 #include "lwip/err.h"
 #include "lwip/dns.h"
 
+/* Port A */
+#define MODEM_CTS	GPIO_Pin_0
+#define MODEM_RTS	GPIO_Pin_1
+#define MODEM_TxD	GPIO_Pin_2
+#define MODEM_RxD	GPIO_Pin_3
+
+/* Port C */
+#define MODEM_RI	GPIO_Pin_0
+#define MODEM_DCD	GPIO_Pin_1
+#define MODEM_DSR	GPIO_Pin_2
+#define MODEM_DTR	GPIO_Pin_3
+
 static OS_EVENT *__sem;
+static INT8U __buf[80];
 
 static void tcpip_init_done(void *arg)
 {
@@ -37,15 +50,25 @@ void modem_init(void)
 
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
 
-	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_2;
+	GPIO_InitStruct.GPIO_Pin = MODEM_TxD | MODEM_RTS;
 	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_3;
+	GPIO_InitStruct.GPIO_Pin = MODEM_RxD | MODEM_CTS;
 	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOA, &GPIO_InitStruct); 
+
+	GPIO_InitStruct.GPIO_Pin = MODEM_DTR;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_Init(GPIOC, &GPIO_InitStruct);
+	GPIO_SetBits(GPIOC, MODEM_DTR);
+
+	GPIO_InitStruct.GPIO_Pin = MODEM_DCD | MODEM_RI | MODEM_DSR;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIOC, &GPIO_InitStruct);
 
 	NVIC_InitStruct.NVIC_IRQChannel = USART2_IRQn;
 	NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 5;
@@ -55,6 +78,7 @@ void modem_init(void)
 
 	USART_StructInit(&USART_InitStruct);
 	USART_InitStruct.USART_BaudRate = 115200;
+	USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
 	USART_Init(USART2, &USART_InitStruct);
 
 	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
@@ -87,7 +111,7 @@ static INT32U read_line(INT8U *buf, INT32U size)
 	return len;
 }
 
-static void write_str(const INT8U *str)
+static void write_str(const char *str)
 {
 	sio_write(NULL, (u8_t *)str, strlen((const char *)str));
 }
@@ -107,17 +131,44 @@ static void link_status_cb(void *ctx, int errCode, void *arg)
 	}
 }
 
+static INT8U at_cmd(const char *cmd)
+{
+	INT32U len;
+
+	write_str("AT");
+	write_str(cmd);
+	write_str("\r\n");
+	while (1) {
+		len = read_line(__buf, sizeof(__buf));
+		LWIP_ASSERT("read_line", len < sizeof(__buf));
+		if (len > 2 && memcmp(__buf, "OK", 2) == 0)
+			return 0;
+		else if (len > 5 && memcmp(__buf, "ERROR", 5) == 0)
+			return 1;
+		else
+			continue;
+	}
+}
+
 void modem_task(void *p_arg)
 {
 	INT8U err;
 	int pd = -1;
-	INT8U buf[80];
 	INT32U len;
 
-	write_str("AT+IPR=115200\r\n");
-	OSTimeDly(OS_TICKS_PER_SEC);
-	while (sio_tryread(NULL, buf, sizeof(buf)) > 0)
-		;
+	GPIO_ResetBits(GPIOC, MODEM_DTR);
+	err = at_cmd("E0");
+	LWIP_ASSERT("at_cmd", !err);
+	err = at_cmd("+IPR=115200");
+	LWIP_ASSERT("at_cmd", !err);
+	err = at_cmd("\\Q3");
+	LWIP_ASSERT("at_cmd", !err);
+	err = at_cmd("&C1");
+	LWIP_ASSERT("at_cmd", !err);
+	err = at_cmd("&D2");
+	LWIP_ASSERT("at_cmd", !err);
+	err = at_cmd("&S0");
+	LWIP_ASSERT("at_cmd", !err);
 
 	while (1) {
 again:
@@ -128,33 +179,30 @@ again:
 			pd = -1;
 		}
 
-		write_str("AT+CGDCONT=1,\"IP\",\"CMNET\"\r\n");
-		while (1) {
-			len = read_line(buf, sizeof(buf));
-			if (len > 2 && memcmp(buf, "OK", 2) == 0) {
-				break;
-			} else if (len > 5 && memcmp(buf, "ERROR", 5) == 0) {
-				err = OSSemPost(__sem);
-				OSTimeDly(OS_TICKS_PER_SEC * 3);
-				goto again;
-			}
+		err = at_cmd("+CGDCONT=1,\"IP\",\"CMNET\"");
+		if (err) {
+			err = OSSemPost(__sem);
+			OSTimeDly(OS_TICKS_PER_SEC * 3);
+			goto again;
 		}
 
 		write_str("ATD*99***1#\r\n");
 		while (1) {
-			len = read_line(buf, sizeof(buf));
-			LWIP_ASSERT("read_line", len < sizeof(buf));
-			if (len > 7 && memcmp(buf, "CONNECT", 7) == 0) {
+			len = read_line(__buf, sizeof(__buf));
+			LWIP_ASSERT("read_line", len < sizeof(__buf));
+			if (len > 7 && memcmp(__buf, "CONNECT", 7) == 0) {
 				break;
 			} else if ((len > 10 &&
-				    memcmp(buf, "NO CARRIER", 10) == 0) ||
-				   (len > 4 && memcmp(buf, "BUSY", 4) == 0) ||
-				   (len > 7 && memcmp(buf, "DELAYED", 7) == 0) ||
-				   (len > 5 && memcmp(buf, "ERROR", 5) == 0) ||
+				    memcmp(__buf, "NO CARRIER", 10) == 0) ||
+				   (len > 4 && memcmp(__buf, "BUSY", 4) == 0) ||
+				   (len > 7 &&
+				    memcmp(__buf, "DELAYED", 7) == 0) ||
+				   (len > 5
+				    && memcmp(__buf, "ERROR", 5) == 0) ||
 				   (len > 11 &&
-				    memcmp(buf, "NO DIALTONE", 11) == 0) ||
+				    memcmp(__buf, "NO DIALTONE", 11) == 0) ||
 				   (len > 9 &&
-				    memcmp(buf, "NO ANSWER", 9) == 0)) {
+				    memcmp(__buf, "NO ANSWER", 9) == 0)) {
 				err = OSSemPost(__sem);
 				OSTimeDly(OS_TICKS_PER_SEC * 3);
 				goto again;
