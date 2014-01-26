@@ -44,14 +44,14 @@ void stun_task(void *p_arg)
 		OSTimeDly(10 * OS_TICKS_PER_SEC);
 		printf("resolving\r\n");
 		ent = gethostbyname("stun.stunprotocol.org");
-		memset(&addr, 0, sizeof(addr));
 
+		memset(&addr, 0, sizeof(addr));
 		addr.sin_family = AF_INET;
 		if (ent) {
 			printf("resolved\r\n");
 			memcpy(&addr.sin_addr.s_addr, ent->h_addr, 4);
 		} else {
-			printf("failed to resolve\n");
+			printf("failed to resolve\r\n");
 			addr.sin_addr.s_addr = inet_addr("107.23.150.92");
 		}
 		addr.sin_port = htons(3478);
