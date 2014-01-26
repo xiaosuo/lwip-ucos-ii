@@ -18,7 +18,6 @@ static void tcpip_init_done(void *arg)
 
 void modem_init(void)
 {
-	int setup = 0;
 	GPIO_InitTypeDef GPIO_InitStruct;
 	USART_InitTypeDef USART_InitStruct;
 	NVIC_InitTypeDef NVIC_InitStruct;
@@ -27,7 +26,7 @@ void modem_init(void)
 	__sem = OSSemCreate(0);
 	LWIP_ASSERT("OSSemCreate", __sem);
 
-	tcpip_init(tcpip_init_done, &setup);
+	tcpip_init(tcpip_init_done, NULL);
 	OSSemPend(__sem, 0, &err);
 	OSSemPost(__sem);
 
@@ -98,8 +97,6 @@ static void link_status_cb(void *ctx, int errCode, void *arg)
 	if (errCode == PPPERR_NONE) {
 		struct ppp_addrs *addrs = arg;
 
-		if (ctx)
-			*(int *)ctx = 1;
 		if (addrs->dns1.addr)
 			dns_setserver(0, &addrs->dns1);
 		if (addrs->dns2.addr)
@@ -116,7 +113,6 @@ void modem_task(void *p_arg)
 	int pd = -1;
 	INT8U buf[80];
 	INT32U len;
-	int connected;
 
 	write_str("AT+IPR=115200\r\n");
 	OSTimeDly(OS_TICKS_PER_SEC);
@@ -167,8 +163,7 @@ again:
 			}
 		}
 
-		connected = 0;
-		pd = pppOverSerialOpen(NULL, link_status_cb, &connected);
+		pd = pppOverSerialOpen(NULL, link_status_cb, NULL);
 		LWIP_ASSERT("pppOverSerialOpen", pd >= 0);
 	}
 }
