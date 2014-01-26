@@ -57,7 +57,7 @@ static void __sio_write_buf(struct __sio_buf *buf, INT8U c)
  */
 sio_fd_t sio_open(u8_t devnum)
 {
-	__sio.rx.sem = OSSemCreate(__SIO_BUF_SIZE); /* number of bytes */
+	__sio.rx.sem = OSSemCreate(0); /* number of bytes */
 	LWIP_ASSERT("OSSemCreate", __sio.rx.sem);
 	__sio.tx.sem = OSSemCreate(__SIO_BUF_SIZE + 1); /* number of spaces */
 	LWIP_ASSERT("OSSemCreate", __sio.tx.sem);
