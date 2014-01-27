@@ -120,8 +120,10 @@ void sio_rx_complete(sio_fd_t fd)
 
 	SYS_ARCH_PROTECT(sr);
 	if (sio_rx_ok(fd)) {
-		c = sio_rx(fd);
-		if (!__sio_buf_full(&__sio.rx.buf)) {
+		if (__sio_buf_full(&__sio.rx.buf)) {
+			sio_disable_rx_irq(fd);
+		} else {
+			c = sio_rx(fd);
 			__sio_write_buf(&__sio.rx.buf, c);
 			err = OSSemPost(__sio.rx.sem);
 			LWIP_ASSERT("OSSemPost", err == OS_ERR_NONE);
@@ -147,6 +149,8 @@ u8_t sio_recv(sio_fd_t fd)
 	case OS_ERR_NONE:
 		SYS_ARCH_PROTECT(sr);
 		c = __sio_read_buf(&__sio.rx.buf);
+		if (__sio.rx.buf.len == __SIO_BUF_SIZE - 1)
+			sio_enable_rx_irq(fd);
 		SYS_ARCH_UNPROTECT(sr);
 		break;
 	case OS_ERR_PEND_ABORT:
@@ -202,6 +206,8 @@ u32_t sio_tryread(sio_fd_t fd, u8_t *data, u32_t len)
 		if (OSSemAccept(__sio.rx.sem) > 0) {
 			SYS_ARCH_PROTECT(sr);
 			c = __sio_read_buf(&__sio.rx.buf);
+			if (__sio.rx.buf.len == __SIO_BUF_SIZE - 1)
+				sio_enable_rx_irq(fd);
 			SYS_ARCH_UNPROTECT(sr);
 			*data++ = c;
 			++n;

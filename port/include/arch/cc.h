@@ -107,6 +107,14 @@ void sio_enable_tx_irq(sio_fd_t fd);
 void sio_disable_tx_irq(sio_fd_t fd);
 #endif
 
+#ifndef sio_enable_rx_irq
+void sio_enable_rx_irq(sio_fd_t fd);
+#endif
+
+#ifndef sio_disable_rx_irq
+void sio_disable_rx_irq(sio_fd_t fd);
+#endif
+
 void sio_rx_complete(sio_fd_t fd);
 void sio_tx_complete(sio_fd_t fd);
 

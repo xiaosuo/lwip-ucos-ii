@@ -9,5 +9,7 @@
 #define sio_tx(fd, c) USART_SendData(USART2, c)
 #define sio_enable_tx_irq(fd) USART_ITConfig(USART2, USART_IT_TC, ENABLE)
 #define sio_disable_tx_irq(fd) USART_ITConfig(USART2, USART_IT_TC, DISABLE)
+#define sio_enable_rx_irq(fd) USART_ITConfig(USART2, USART_IT_RXNE, ENABLE)
+#define sio_disable_rx_irq(fd) USART_ITConfig(USART2, USART_IT_RXNE, DISABLE)
 
 #endif /* __SIO_CPU_H__ */
